@@ -1,0 +1,55 @@
+otelcol.receiver.otlp "default" {
+    grpc {
+        endpoint = "0.0.0.0:4319"
+    }
+
+    http { }
+
+    output {
+        metrics = [otelcol.processor.memory_limiter.default.input]
+        logs    = [otelcol.processor.memory_limiter.default.input]
+        traces  = [otelcol.processor.memory_limiter.default.input]
+    }
+}
+
+otelcol.processor.memory_limiter "default" {
+    check_interval   = "1s"
+    limit_percentage = 10
+    spike_limit_percentage = 90
+
+    output {
+        metrics = [otelcol.exporter.otlp.default.input]
+        logs    = [otelcol.exporter.otlp.default.input]
+        traces  = [otelcol.exporter.otlp.default.input]
+    }
+}
+
+otelcol.exporter.otlp "default" {
+    client {
+        endpoint = "tempo:4317"
+        tls {
+            insecure = true
+        }
+    }
+}
+
+livedebugging {
+  enabled = true
+}
+
+local.file_match "varlog" {
+    path_targets = [{"__path__" = "/logs/var/log/*.log"}]
+    sync_period  = "5s"
+}
+
+loki.source.file "log_scrape" {
+    targets    = local.file_match.varlog.targets
+    forward_to = [loki.write.local.receiver]
+    tail_from_end = true
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

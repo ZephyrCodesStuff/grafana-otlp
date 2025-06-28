@@ -1,0 +1,76 @@
+services:
+
+  # For visualization and monitoring logs, traces, and metrics
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - './volumes/grafana_data:/var/lib/grafana'
+    depends_on:
+      - alloy
+      - loki
+      - tempo
+
+  # For receiving logs, traces, and metrics and sending them to Loki and Tempo
+  alloy:
+    image: grafana/alloy
+    container_name: alloy
+    restart: unless-stopped
+    user: 'root:root'
+    ports:
+      - '12345:12345'
+      - '4319:4319'
+    command:
+      - 'run'
+      - '--server.http.listen-addr=0.0.0.0:12345'
+      - '--storage.path=/var/lib/alloy/data'
+      - '/etc/alloy/config.alloy'
+    volumes:
+      - './configs/config.alloy:/etc/alloy/config.alloy'
+      - './volumes/alloy_data:/var/lib/alloy'
+      - '/var/log:/logs/var/log'
+  
+  # For storing logs and metrics
+  loki:
+    image: grafana/loki
+    container_name: loki
+    restart: unless-stopped
+    user: '1000:1000'
+    ports:
+      - '3100:3100'
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./configs/loki-config.yaml:/etc/loki/loki-config.yaml
+      - ./volumes/loki_data:/loki
+      - ./volumes/loki_data_var:/var/loki
+      - ./volumes/loki_data_wal:/wal
+
+  # For storing traces
+  tempo:
+    image: grafana/tempo
+    container_name: tempo
+    restart: unless-stopped
+    user: '1000:1000'
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+    volumes:
+      - ./configs/tempo.yaml:/etc/tempo.yaml
+      - ./volumes/tempo_data:/var/tempo
+    depends_on:
+      - memcached
+    command: ["--config.file=/etc/tempo.yaml"]
+
+  # Cache for Tempo
+  memcached:
+    image: memcached
+    container_name: memcached
+    restart: unless-stopped
+    ports:
+      - "11211:11211"
+    environment:
+      - MEMCACHED_MAX_MEMORY=64m
+      - MEMCACHED_THREADS=4
