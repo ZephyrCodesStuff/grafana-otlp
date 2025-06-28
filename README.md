@@ -36,7 +36,7 @@ This Docker Compose setup provides a full observability stack with the following
   - `4319:4319` (OTLP gRPC Receiver)
 - **Access**:
   - Management UI: [localhost:12345](http://localhost:12345)
-  - OTLP Endpoint: localhost:4319
+  - OTLP Endpoint: [localhost:4319](http://localhost:4319) (gRPC)
 - **Volume Mounts**:
   - Configuration: `./configs/config.alloy`
   - Data storage: `./volumes/alloy_data`
